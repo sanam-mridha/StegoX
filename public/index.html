@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>StegoX — Beast Mode</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#04101a; --bg2:#05080b;
+    --neon:#00f0ff; --neon-2:#ff4dff; --glass:rgba(255,255,255,0.04);
+    --card-border: rgba(255,255,255,0.06);
+    --shadow: 0 10px 30px rgba(2,8,23,0.6);
+    --accent: linear-gradient(90deg,var(--neon),var(--neon-2));
+    --glass-blur: blur(10px);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+    background: radial-gradient(1200px 600px at 10% 10%, rgba(0,240,255,0.04), transparent),
+                radial-gradient(900px 500px at 90% 90%, rgba(255,77,255,0.03), transparent),
+                linear-gradient(180deg,var(--bg1),var(--bg2));
+    color:#e6f7ff;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    overflow-x:hidden;
+  }
+
+  /* particles canvas sits behind everything */
+  #particles { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.65; }
+
+  .wrap{
+    position:relative; z-index:2;
+    max-width:1200px; margin:40px auto; padding:32px;
+  }
+
+  header.top{
+    display:flex; align-items:center; gap:18px; margin-bottom:18px;
+  }
+  .logo {
+    width:64px; height:64px; border-radius:12px; background:linear-gradient(135deg,#001b2b,#002b3b);
+    box-shadow: 0 6px 30px rgba(0,240,255,0.08), 0 1px 0 rgba(255,255,255,0.03) inset;
+    display:grid; place-items:center; font-weight:800; color:var(--neon);
+    border:1px solid rgba(255,255,255,0.03);
+    transform:translateZ(0);
+  }
+
+  h1.title{
+    margin:0; font-size: clamp(20px, 3vw, 32px); letter-spacing:-0.02em;
+    background:var(--accent); -webkit-background-clip:text; background-clip:text; color:transparent;
+    font-weight:800;
+    display:flex; flex-direction:column;
+  }
+  .subtitle{ font-weight:400; color:rgba(230,247,255,0.7); font-size:13px; margin-top:6px; }
+
+  /* layout */
+  .grid{
+    display:grid; grid-template-columns: 1fr 420px; gap:24px; align-items:start;
+  }
+  @media (max-width:980px){ .grid{ grid-template-columns:1fr; } }
+
+  /* card style */
+  .card{
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border:1px solid var(--card-border);
+    border-radius:14px; padding:20px; box-shadow:var(--shadow);
+    backdrop-filter: blur(8px) saturate(120%);
+    transition: transform .28s cubic-bezier(.2,.9,.2,1), box-shadow .28s;
+  }
+  .card:hover{ transform:translateY(-6px) scale(1.01); box-shadow:0 25px 60px rgba(0,0,0,0.6); }
+
+  /* dropzone */
+  .drop {
+    border-radius:12px; padding:18px; display:flex; gap:12px; align-items:center;
+    border:2px dashed rgba(255,255,255,0.04); transition: border-color .2s, box-shadow .2s, transform .12s;
+    background: linear-gradient(180deg, rgba(255,255,255,0.012), transparent);
+    position:relative; overflow:hidden;
+  }
+  .drop.hover{ border-color: rgba(0,240,255,0.38); box-shadow: 0 8px 40px rgba(0,240,255,0.06); transform: translateY(-3px); }
+  .drop .icon { width:56px; height:56px; border-radius:10px; display:grid; place-items:center; background:linear-gradient(135deg, rgba(0,240,255,0.06), rgba(255,77,255,0.04)); color:var(--neon); border:1px solid rgba(255,255,255,0.02); }
+  .drop .hint { color:rgba(230,247,255,0.78); font-size:15px; }
+  .small { font-size:13px; color:rgba(230,247,255,0.6); }
+
+  /* controls */
+  .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+  input[type=file]{ display:none; }
+  .btn {
+    background: linear-gradient(90deg, rgba(0,240,255,0.15), rgba(255,77,255,0.08));
+    border:1px solid rgba(255,255,255,0.06);
+    color:var(--neon); padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .btn:active{ transform:translateY(2px) }
+  .btn.primary{
+    background: linear-gradient(90deg,var(--neon),var(--neon-2));
+    color:#051016; box-shadow:0 10px 40px rgba(0,240,255,0.12);
+  }
+  .btn.ghost{ background:transparent; color:rgba(230,247,255,0.9); border:1px solid rgba(255,255,255,0.04); }
+
+  .field{ width:100%; }
+  .input, textarea {
+    width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.04);
+    background: rgba(1,8,12,0.35); color:#eafcff; outline:none; font-size:14px;
+  }
+  textarea{ min-height:110px; resize:vertical }
+
+  /* preview card */
+  .preview {
+    border-radius:12px; overflow:hidden; position:relative; display:flex; flex-direction:column; gap:12px;
+  }
+  .preview img{ width:100%; display:block; border-radius:10px; border:1px solid rgba(255,255,255,0.03); }
+  .preview .meta{ display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 2px; color:rgba(230,247,255,0.7); font-size:13px; }
+
+  /* result strip */
+  .resultStrip{ display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-top:8px; }
+  .countdown {
+    padding:8px 10px; border-radius:8px; background:rgba(0,0,0,0.36); color:var(--neon); font-weight:700;
+    border:1px solid rgba(0,240,255,0.06);
+  }
+
+  .messageBox{
+    white-space:pre-wrap; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    background: rgba(0,0,0,0.3); border-radius:10px; padding:12px; color:#c9f9ff; font-size:14px;
+    border:1px solid rgba(255,255,255,0.03); min-height:80px;
+  }
+
+  /* fancy glow and hover blur on headings */
+  .fancy{
+    display:inline-block; padding:4px 8px; border-radius:8px; transition: filter .22s;
+  }
+  .fancy:hover{ filter: blur(.3px) drop-shadow(0 0 12px rgba(0,240,255,0.18)); }
+
+  /* tiny util */
+  .muted{ color:rgba(230,247,255,0.55); font-size:13px; }
+  .flex{ display:flex; gap:8px; align-items:center; }
+  .center{ display:grid; place-items:center; }
+  .hidden{ display:none !important; }
+
+  /* typewriter caret */
+  .typewriter { overflow:hidden; border-right: 2px solid rgba(255,255,255,0.08); white-space:nowrap; animation: caret 1s steps(1) infinite; }
+  @keyframes caret { 50% { border-color: transparent; } }
+
+  /* footer */
+  footer{ text-align:center; margin-top:26px; color:rgba(230,247,255,0.35); font-size:13px; }
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+
+<div class="wrap">
+  <header class="top">
+    <div class="logo">SX</div>
+    <div>
+      <h1 class="title">
+        <span id="typeMain">StegoX — <span style="font-weight:700">Hide & Reveal</span></span>
+        <span class="subtitle">One-click LSB steganography — PNG safe • AES-GCM optional • Beast mode UI</span>
+      </h1>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- LEFT: Controls -->
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div class="fancy"><strong>Encode</strong> / <span class="muted">Decode</span></div>
+          <div class="muted" style="margin-top:6px;font-size:13px">Upload a file or paste an image URL. Output auto-deletes server-side after 5s.</div>
+        </div>
+        <div class="flex">
+          <button id="btnModeToggle" class="btn ghost" title="Toggle mode">Mode: <strong id="modeLabel">Encode</strong></button>
+        </div>
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)">
+
+      <div id="dropzone" class="drop" tabindex="0" aria-label="Drop image here">
+        <div class="icon">🖼️</div>
+        <div>
+          <div class="hint">Drag & drop image here or <button id="chooseFile" class="btn">Choose file</button></div>
+          <div class="small">PNG recommended. Max ~5MB (backend limit).</div>
+        </div>
+        <input id="fileInput" type="file" accept="image/*" />
+      </div>
+
+      <div style="margin-top:14px;">
+        <label class="small">Or paste image URL</label>
+        <input id="imageUrl" class="input" type="url" placeholder="https://..." />
+      </div>
+
+      <div style="margin-top:12px;">
+        <label class="small">Secret message (encode) / Passphrase (optional)</label>
+        <textarea id="message" class="input" placeholder="The secret to hide (when in Encode mode)"></textarea>
+        <input id="passphrase" class="input" placeholder="Optional passphrase for AES-GCM (same for decode)" />
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button id="btnAction" class="btn primary">Encode</button>
+        <button id="btnDecode" class="btn">Decode</button>
+        <div class="muted" id="status" style="padding-left:6px"></div>
+      </div>
+
+      <div style="margin-top:12px;" class="muted">Tip: After encoding, server deletes file after 5s — download immediately or copy the URL.</div>
+    </section>
+
+    <!-- RIGHT: Preview + Results -->
+    <aside>
+      <div class="card preview" id="previewCard">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:700">Preview</div>
+          <div class="muted" id="capacityHint">No image</div>
+        </div>
+
+        <div id="previewArea" style="min-height:200px;display:grid;place-items:center;padding:12px;">
+          <div class="muted">No image selected</div>
+        </div>
+
+        <div class="resultStrip">
+          <div class="flex">
+            <button id="btnPreviewClear" class="btn ghost">Clear</button>
+            <button id="btnPreviewZoom" class="btn ghost">Zoom</button>
+          </div>
+          <div class="flex">
+            <div id="downloadControls" class="hidden">
+              <button id="btnCopyUrl" class="btn">Copy URL</button>
+              <a id="btnDownload" class="btn" download="encoded.png">Download</a>
+            </div>
+            <div id="countdownEl" class="countdown hidden">5s</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:700">Decoded Message</div>
+          <div class="muted">Output</div>
+        </div>
+        <div id="messageBox" class="messageBox" style="margin-top:8px">No decoded message yet.</div>
+        <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
+          <button id="btnCopyMsg" class="btn ghost">Copy</button>
+          <button id="btnClearMsg" class="btn ghost">Clear</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <small>Built for beast-mode steganography • Keep your passphrase safe • Avoid uploading to social networks (may break hidden data)</small>
+  </footer>
+</div>
+
+<script>
+/* -------------------------
+   CONFIG
+   ------------------------- */
+const API_BASE = ''; // '' == same origin. Set to 'http://localhost:3000' if needed
+const OUTPUT_TTL_SEC = 5; // matches backend deletion time
+/* ------------------------- */
+
+/* Utilities */
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+
+/* Init references */
+const dropzone = $('#dropzone');
+const fileInput = $('#fileInput');
+const chooseFile = $('#chooseFile');
+const imageUrl = $('#imageUrl');
+const messageEl = $('#message');
+const passphraseEl = $('#passphrase');
+const btnAction = $('#btnAction');
+const btnDecode = $('#btnDecode');
+const modeLabel = $('#modeLabel');
+const btnModeToggle = $('#btnModeToggle');
+
+const previewArea = $('#previewArea');
+const capacityHint = $('#capacityHint');
+const previewCard = $('#previewCard');
+const btnPreviewClear = $('#btnPreviewClear';
+) // accidental semicolon — fix below
+</script>
+
+<script>
+/* ---------- Fix accidental paste error and continue --------- */
+// above accidental semicolon closed; rebind elements properly
+const downloadControls = $('#downloadControls');
+const btnCopyUrl = $('#btnCopyUrl');
+const btnDownload = $('#btnDownload');
+const countdownEl = $('#countdownEl');
+const statusEl = $('#status');
+const messageBox = $('#messageBox');
+const btnCopyMsg = $('#btnCopyMsg');
+const btnClearMsg = $('#btnClearMsg');
+const btnPreviewZoom = $('#btnPreviewZoom');
+
+/* state */
+let currentFile = null;     // File object or null
+let currentPreviewUrl = null; // blob/objectURL or remote URL
+let currentPreviewImg = null; // Image element
+let currentOutputUrl = null;   // objectURL of encoded blob
+let currentOutputBlob = null;
+let currentCountdownTimer = null;
+let mode = 'encode'; // 'encode' or 'decode'
+
+/* helper: reset status */
+function setStatus(t='') { statusEl.textContent = t; }
+
+/* MODE toggle handlers */
+function setMode(m) {
+  mode = m;
+  modeLabel.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+  btnAction.textContent = m === 'encode' ? 'Encode' : 'Encode';
+  btnDecode.classList.toggle('hidden', m === 'encode');
+  // change primary button
+  btnAction.classList.toggle('primary', m === 'encode');
+  messageEl.placeholder = m === 'encode' ? 'The secret to hide...' : 'Message field ignored in Decode mode';
+}
+btnModeToggle.addEventListener('click', () => {
+  setMode(mode === 'encode' ? 'decode' : 'encode');
+});
+setMode('encode');
+
+/* choose file open */
+chooseFile.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', async (e) => {
+  if (e.target.files && e.target.files[0]) {
+    await attachFile(e.target.files[0]);
+  }
+});
+
+/* drag & drop */
+['dragenter','dragover'].forEach(n => {
+  dropzone.addEventListener(n, (ev) => { ev.preventDefault(); dropzone.classList.add('hover'); });
+});
+['dragleave','drop'].forEach(n => {
+  dropzone.addEventListener(n, (ev) => { ev.preventDefault(); dropzone.classList.remove('hover'); });
+});
+dropzone.addEventListener('drop', async (ev) => {
+  const f = ev.dataTransfer.files && ev.dataTransfer.files[0];
+  if (f) await attachFile(f);
+});
+
+/* allow paste URL via keyboard: Ctrl+V into zone (optional) */
+dropzone.addEventListener('paste', async (ev) => {
+  const text = (ev.clipboardData || window.clipboardData).getData('text');
+  if (text && text.startsWith('http')) {
+    imageUrl.value = text;
+    await loadPreviewFromUrl(text);
+  }
+});
+
+/* attach file */
+async function attachFile(file) {
+  currentFile = file;
+  currentPreviewImg = new Image();
+  const url = URL.createObjectURL(file);
+  currentPreviewUrl = url;
+  showPreviewImage(url);
+  // capacity estimate: wait load
+  currentPreviewImg.onload = () => {
+    const capacityBytes = Math.floor((currentPreviewImg.naturalWidth * currentPreviewImg.naturalHeight * 3) / 8);
+    capacityHint.textContent = `Capacity ≈ ${capacityBytes.toLocaleString()} bytes`;
+  };
+  currentPreviewImg.src = url;
+}
+
+/* load preview from url */
+async function loadPreviewFromUrl(url) {
+  try {
+    // quick try: set preview (browser will fetch)
+    currentFile = null;
+    currentPreviewUrl = url;
+    currentPreviewImg = new Image();
+    currentPreviewImg.crossOrigin = 'Anonymous';
+    currentPreviewImg.onload = () => {
+      showPreviewImage(url);
+      const capacityBytes = Math.floor((currentPreviewImg.naturalWidth * currentPreviewImg.naturalHeight * 3) / 8);
+      capacityHint.textContent = `Capacity ≈ ${capacityBytes.toLocaleString()} bytes`;
+    };
+    currentPreviewImg.onerror = () => {
+      capacityHint.textContent = 'Preview failed (CORS or invalid URL)';
+      showPreviewPlaceholder('Preview failed');
+    };
+    currentPreviewImg.src = url;
+  } catch (e) {
+    showPreviewPlaceholder('Preview error');
+  }
+}
+
+/* show preview image */
+function showPreviewImage(src) {
+  previewArea.innerHTML = '';
+  const wrapper = document.createElement('div');
+  wrapper.style.width = '100%';
+  wrapper.style.display = 'grid';
+  wrapper.style.placeItems = 'center';
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = 'preview';
+  img.style.maxHeight = '320px';
+  img.style.maxWidth = '100%';
+  wrapper.appendChild(img);
+  previewArea.appendChild(wrapper);
+  // set download controls hidden
+  downloadControls.classList.add('hidden');
+  countdownEl.classList.add('hidden');
+}
+
+/* show placeholder */
+function showPreviewPlaceholder(text='No image selected') {
+  previewArea.innerHTML = `<div class="muted">${text}</div>`;
+  capacityHint.textContent = 'No image';
+  downloadControls.classList.add('hidden');
+  countdownEl.classList.add('hidden');
+}
+
+/* Clear preview */
+$('#btnPreviewClear').addEventListener('click', () => {
+  currentFile = null; currentPreviewUrl = null; currentPreviewImg = null;
+  if (currentPreviewUrl && currentPreviewUrl.startsWith('blob:')) URL.revokeObjectURL(currentPreviewUrl);
+  currentPreviewUrl = null;
+  showPreviewPlaceholder();
+});
+
+/* Zoom preview (open in new tab) */
+btnPreviewZoom.addEventListener('click', () => {
+  if (currentPreviewUrl) window.open(currentPreviewUrl, '_blank');
+});
+
+/* copy url */
+btnCopyUrl.addEventListener('click', async () => {
+  if (!currentOutputUrl) return;
+  try {
+    await navigator.clipboard.writeText(currentOutputUrl);
+    alert('Encoded URL copied to clipboard');
+  } catch {
+    alert('Copy failed');
+  }
+});
+
+/* download link */
+btnDownload.addEventListener('click', () => {
+  // href set when output arrives
+});
+
+/* copy message */
+btnCopyMsg.addEventListener('click', async () => {
+  const t = messageBox.textContent || '';
+  if (!t) return;
+  try {
+    await navigator.clipboard.writeText(t);
+    alert('Copied message');
+  } catch { alert('Copy failed'); }
+});
+btnClearMsg.addEventListener('click', () => {
+  messageBox.textContent = '';
+});
+
+/* ACTIONS: Encode / Decode */
+btnAction.addEventListener('click', () => doEncode());
+btnDecode.addEventListener('click', () => doDecode());
+
+async function doEncode() {
+  setStatus('Preparing...');
+  // require message
+  const msg = messageEl.value || '';
+  if (!msg) return alert('Please enter a message to encode (or toggle mode).');
+
+  const fd = new FormData();
+  if (currentFile) fd.append('image', currentFile);
+  else if (imageUrl.value) fd.append('imageUrl', imageUrl.value);
+  else return alert('Please attach an image file or paste an image URL.');
+
+  fd.append('message', msg);
+  const pass = passphraseEl.value || '';
+  if (pass) fd.append('passphrase', pass);
+
+  try {
+    setStatus('Uploading & encoding...');
+    btnAction.disabled = true;
+
+    const resp = await fetch(`${API_BASE}/encode`, { method:'POST', body:fd });
+    if (!resp.ok) {
+      const j = await resp.json().catch(()=>null);
+      throw new Error(j?.error || `Server error: ${resp.status}`);
+    }
+    // get blob
+    const blob = await resp.blob();
+    // create object URL and show preview/download
+    if (currentOutputUrl && currentOutputUrl.startsWith('blob:')) URL.revokeObjectURL(currentOutputUrl);
+    currentOutputBlob = blob;
+    currentOutputUrl = URL.createObjectURL(blob);
+    btnDownload.href = currentOutputUrl;
+    btnDownload.download = 'encoded.png';
+    downloadControls.classList.remove('hidden');
+
+    // show preview
+    showPreviewImage(currentOutputUrl);
+    setStatus('Encoded! Download or copy URL. Deleting in 5s...');
+    startCountdown(OUTPUT_TTL_SEC);
+
+  } catch (err) {
+    console.error(err);
+    alert('Encode failed: ' + (err.message || err));
+    setStatus('');
+  } finally {
+    btnAction.disabled = false;
+  }
+}
+
+async function doDecode() {
+  setStatus('Preparing decode...');
+  const fd = new FormData();
+  if (currentFile) fd.append('image', currentFile);
+  else if (imageUrl.value) fd.append('imageUrl', imageUrl.value);
+  else return alert('Please attach an image file or paste an image URL.');
+
+  const pass = passphraseEl.value || '';
+  if (pass) fd.append('passphrase', pass);
+
+  try {
+    setStatus('Decoding...');
+    btnDecode.disabled = true;
+    const resp = await fetch(`${API_BASE}/decode`, { method:'POST', body:fd });
+    if (!resp.ok) {
+      const j = await resp.json().catch(()=>null);
+      throw new Error(j?.error || `Server error: ${resp.status}`);
+    }
+    const j = await resp.json();
+    const text = j.message || '';
+    animateDecodedText(text);
+    setStatus('Decoded');
+  } catch (err) {
+    console.error(err);
+    alert('Decode failed: ' + (err.message || err));
+    setStatus('');
+  } finally {
+    btnDecode.disabled = false;
+  }
+}
+
+/* Countdown for output deletion */
+function startCountdown(seconds) {
+  clearInterval(currentCountdownTimer);
+  let s = seconds;
+  countdownEl.classList.remove('hidden');
+  countdownEl.textContent = s + 's';
+  countdownEl.style.display = 'inline-block';
+  currentCountdownTimer = setInterval(() => {
+    s -= 1;
+    if (s <= 0) {
+      clearInterval(currentCountdownTimer);
+      countdownEl.classList.add('hidden');
+      // revoke object URL to free memory & match server deletion
+      if (currentOutputUrl && currentOutputUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(currentOutputUrl);
+      }
+      currentOutputUrl = null;
+      currentOutputBlob = null;
+      downloadControls.classList.add('hidden');
+      showPreviewPlaceholder('Encoded file removed (server-side TTL)');
+      setStatus('Output removed');
+    } else {
+      countdownEl.textContent = s + 's';
+    }
+  }, 1000);
+}
+
+/* typewriter for decoded message */
+function animateDecodedText(text) {
+  messageBox.textContent = '';
+  if (!text) { messageBox.textContent = '(empty)'; return; }
+  let i = 0;
+  const speed = 18;
+  const interval = setInterval(() => {
+    messageBox.textContent = text.slice(0, i++);
+    if (i > text.length) clearInterval(interval);
+  }, speed);
+}
+
+/* particles background - simple floating neon dots */
+(function particlesInit(){
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let w, h, dpr = Math.max(1, window.devicePixelRatio || 1);
+  const particles = [];
+  const PCOUNT = 80;
+
+  function resize(){
+    w = canvas.width = innerWidth * dpr;
+    h = canvas.height = innerHeight * dpr;
+    canvas.style.width = innerWidth + 'px';
+    canvas.style.height = innerHeight + 'px';
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function rand(min,max){ return Math.random()*(max-min)+min; }
+  for(let i=0;i<PCOUNT;i++){
+    particles.push({
+      x: rand(0,w),
+      y: rand(0,h),
+      r: rand(0.6,2.6)*dpr,
+      speed: rand(0.1,0.6),
+      angle: rand(0,Math.PI*2),
+      hue: Math.random()>0.5?180:320
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    for(const p of particles){
+      p.x += Math.cos(p.angle)*p.speed*dpr*0.6;
+      p.y += Math.sin(p.angle)*p.speed*dpr*0.6;
+      p.angle += (Math.random()-0.5)*0.02;
+      if(p.x < -20*dpr) p.x = w + 20*dpr;
+      if(p.x > w + 20*dpr) p.x = -20*dpr;
+      if(p.y < -20*dpr) p.y = h + 20*dpr;
+      if(p.y > h + 20*dpr) p.y = -20*dpr;
+
+      ctx.beginPath();
+      const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*6);
+      g.addColorStop(0, `hsla(${p.hue},100%,65%,0.16)`);
+      g.addColorStop(0.3, `hsla(${p.hue},90%,60%,0.06)`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(p.x - p.r*6, p.y - p.r*6, p.r*12, p.r*12);
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* small accessibility: pressing Enter on imageUrl loads preview */
+imageUrl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') loadPreviewFromUrl(imageUrl.value); });
+
+/* initial ui */
+showPreviewPlaceholder();
+
+/* END */
+</script>
+</body>
+</html>
