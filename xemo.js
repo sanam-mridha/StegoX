@@ -33,6 +33,7 @@ const upload = multer({
   },
 });
 
+app.use(express.static('public'));
 app.use(express.json({ limit: '10kb' })); // small JSON bodies only
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
